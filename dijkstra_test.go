@@ -57,6 +57,15 @@ func TestDijkstraNoPath(t *testing.T) {
 	}
 }
 
+func TestDijkstraAllDijkstraDisjointShortestPathsWikipedia(t *testing.T) {
+	g := WikipediaGraph()
+
+	it := g.AllDijkstraDisjointShortestPaths(1, 5)
+	for it.Next() {
+		t.Log(it.Get())
+	}
+}
+
 func TestDijkstraAllDijkstraDisjointShortestPaths(t *testing.T) {
 	g := NewDirectedGraph[int, int]()
 

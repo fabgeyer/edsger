@@ -64,10 +64,11 @@ type SimplePathIterator[T comparable, N Number] struct {
 	CutoffWeight N
 	CutoffHops   int
 
-	g       *Graph[T, N]
-	visited map[T]bool
-	dest    T
-	stack   []*SPIStackElem[T, N]
+	g         *Graph[T, N]
+	visited   map[T]bool
+	dest      T
+	stack     []*SPIStackElem[T, N]
+	heuristic func(i, j NodeWeight[T, N]) int
 
 	// Returned value
 	path        []T
@@ -93,6 +94,26 @@ func (g *Graph[T, N]) AllSimplePaths(source, dest T) *SimplePathIterator[T, N] {
 	}
 }
 
+func (g *Graph[T, N]) AllSimplePathsWithHeuristic(source, dest T, heuristic func(i, j NodeWeight[T, N]) int) *SimplePathIterator[T, N] {
+	it := g.AllSimplePaths(source, dest)
+	it.heuristic = heuristic
+	for _, e := range it.stack {
+		e.edges = it.applyHeuristic(e.edges)
+	}
+	return it
+}
+
+func (it *SimplePathIterator[T, N]) applyHeuristic(edges []NodeWeight[T, N]) []NodeWeight[T, N] {
+	if it.heuristic == nil {
+		return edges
+	}
+
+	res := make([]NodeWeight[T, N], len(edges))
+	copy(res, edges)
+	slices.SortFunc(res, it.heuristic)
+	return res
+}
+
 func (it *SimplePathIterator[T, N]) Next() bool {
 	n := len(it.stack) - 1
 	for n >= 0 {
@@ -104,7 +125,12 @@ func (it *SimplePathIterator[T, N]) Next() bool {
 			continue
 		}
 
-		i := rand.Intn(len(top.edges))
+		var i int
+		if it.heuristic == nil {
+			i = rand.Intn(len(top.edges))
+		} else {
+			i = 0
+		}
 		edge := top.edges[i]
 		top.edges = slices.Concat(top.edges[:i], top.edges[i+1:])
 
@@ -133,7 +159,7 @@ func (it *SimplePathIterator[T, N]) Next() bool {
 			it.stack = append(it.stack, &SPIStackElem[T, N]{
 				node:   edge.Node,
 				weight: weight,
-				edges:  it.g.edges[edge.Node],
+				edges:  it.applyHeuristic(it.g.edges[edge.Node]),
 			})
 			n++
 		}

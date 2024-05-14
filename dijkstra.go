@@ -14,6 +14,14 @@ type priorityQueue[T comparable, N Number] struct {
 	pr    map[T]N   // value to priority
 }
 
+func newPriorityQueue[T comparable, N Number](n int) *priorityQueue[T, N] {
+	return &priorityQueue[T, N]{
+		items: make([]T, 0, n),
+		m:     make(map[T]int, n),
+		pr:    make(map[T]N, n),
+	}
+}
+
 func (pq *priorityQueue[T, N]) Len() int { return len(pq.items) }
 
 func (pq *priorityQueue[T, N]) Less(i, j int) bool { return pq.pr[pq.items[i]] < pq.pr[pq.items[j]] }
@@ -73,11 +81,7 @@ func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool) (m
 	g.validatePathNodes(source, dest)
 
 	prev := make(map[T][]T, len(g.nodes))
-	q := &priorityQueue[T, N]{
-		items: make([]T, 0, len(g.nodes)),
-		m:     make(map[T]int, len(g.nodes)),
-		pr:    make(map[T]N, len(g.nodes)),
-	}
+	q := newPriorityQueue[T, N](len(g.nodes))
 
 	maxW := MaxValue[N]()
 	for n := range g.nodes {

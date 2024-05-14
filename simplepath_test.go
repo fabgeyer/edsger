@@ -73,3 +73,23 @@ func TestAllSimplePaths(t *testing.T) {
 	validateSimplePathIterator(t, it, shortestPath, shortestTotal)
 
 }
+
+func TestAllSimplePathsWithHeuristic(t *testing.T) {
+	g := WikipediaGraph()
+	source, dest := 1, 5
+
+	distances := make(map[int]int)
+	for n := range g.nodes {
+		_, distances[n] = g.DijkstraShortestPath(n, dest)
+	}
+	t.Log(distances)
+
+	it := g.AllSimplePathsWithHeuristic(source, dest, func(i, j NodeWeight[int, int]) int {
+		return distances[i.Node] - distances[j.Node]
+	})
+
+	for it.Next() {
+		path, weight := it.Get()
+		t.Log(path, weight)
+	}
+}
