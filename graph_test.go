@@ -63,3 +63,18 @@ func TestGraphStruct(t *testing.T) {
 		t.Fatal("Invalid number of edges")
 	}
 }
+
+func TestEdgeIterator(t *testing.T) {
+	g := WikipediaGraph()
+
+	n := 0
+	it := g.Edges()
+	for it.Next() {
+		t.Log(it.Get())
+		n++
+	}
+
+	if n != 9 {
+		t.Fatal("Invalid number of edges")
+	}
+}

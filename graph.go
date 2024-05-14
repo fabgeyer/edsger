@@ -5,6 +5,12 @@ type NodeWeight[T comparable, N Number] struct {
 	Weight N
 }
 
+type WeightedEdge[T comparable, N Number] struct {
+	From   T
+	To     T
+	Weight N
+}
+
 type Graph[T comparable, N Number] struct {
 	nodes    map[T]int
 	edges    map[T][]NodeWeight[T, N]
@@ -87,5 +93,48 @@ func (g *Graph[T, N]) validatePathNodes(source, dest T) {
 	}
 	if !g.HasNode(dest) {
 		panic("Invalid destination node")
+	}
+}
+
+type EdgeIterator[T comparable, N Number] struct {
+	g     *Graph[T, N]
+	nodes []T
+	i     int
+	edge  *NodeWeight[T, N]
+}
+
+func (g *Graph[T, N]) Edges() *EdgeIterator[T, N] {
+	nodes := make([]T, len(g.nodes))
+	for n, i := range g.nodes {
+		nodes[i] = n
+	}
+
+	return &EdgeIterator[T, N]{
+		g:     g,
+		nodes: nodes,
+	}
+}
+
+func (it *EdgeIterator[T, N]) Next() bool {
+	for len(it.nodes) > 0 {
+		for i := it.i; i < len(it.g.edges[it.nodes[0]]); i++ {
+			it.edge = &it.g.edges[it.nodes[0]][i]
+			if it.g.directed || it.g.nodes[it.nodes[0]] <= it.g.nodes[it.edge.Node] {
+				it.i = i + 1
+				return true
+			}
+		}
+
+		it.nodes = it.nodes[1:]
+		it.i = 0
+	}
+	return false
+}
+
+func (it *EdgeIterator[T, N]) Get() WeightedEdge[T, N] {
+	return WeightedEdge[T, N]{
+		From:   it.nodes[0],
+		To:     it.edge.Node,
+		Weight: it.edge.Weight,
 	}
 }
