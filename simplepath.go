@@ -57,7 +57,7 @@ func (g *Graph[T, N]) simplePath(source, dest T, visited map[T]bool, currentPath
 type SPIStackElem[T comparable, N Number] struct {
 	node   T
 	weight N
-	edges  []NodeWeight[T, N]
+	edges  []*NodeWeight[T, N]
 }
 
 type SimplePathIterator[T comparable, N Number] struct {
@@ -68,7 +68,7 @@ type SimplePathIterator[T comparable, N Number] struct {
 	visited   map[T]bool
 	dest      T
 	stack     []*SPIStackElem[T, N]
-	heuristic func(i, j NodeWeight[T, N]) int
+	heuristic func(i, j *NodeWeight[T, N]) int
 
 	// Returned value
 	path        []T
@@ -94,7 +94,7 @@ func (g *Graph[T, N]) AllSimplePaths(source, dest T) *SimplePathIterator[T, N] {
 	}
 }
 
-func (g *Graph[T, N]) AllSimplePathsWithHeuristic(source, dest T, heuristic func(i, j NodeWeight[T, N]) int) *SimplePathIterator[T, N] {
+func (g *Graph[T, N]) AllSimplePathsWithHeuristic(source, dest T, heuristic func(i, j *NodeWeight[T, N]) int) *SimplePathIterator[T, N] {
 	it := g.AllSimplePaths(source, dest)
 	it.heuristic = heuristic
 	for _, e := range it.stack {
@@ -103,12 +103,12 @@ func (g *Graph[T, N]) AllSimplePathsWithHeuristic(source, dest T, heuristic func
 	return it
 }
 
-func (it *SimplePathIterator[T, N]) applyHeuristic(edges []NodeWeight[T, N]) []NodeWeight[T, N] {
+func (it *SimplePathIterator[T, N]) applyHeuristic(edges []*NodeWeight[T, N]) []*NodeWeight[T, N] {
 	if it.heuristic == nil {
 		return edges
 	}
 
-	res := make([]NodeWeight[T, N], len(edges))
+	res := make([]*NodeWeight[T, N], len(edges))
 	copy(res, edges)
 	slices.SortFunc(res, it.heuristic)
 	return res

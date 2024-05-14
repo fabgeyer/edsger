@@ -1,5 +1,9 @@
 package edsger
 
+import (
+	"slices"
+)
+
 type NodeWeight[T comparable, N Number] struct {
 	Node   T
 	Weight N
@@ -13,7 +17,7 @@ type WeightedEdge[T comparable, N Number] struct {
 
 type Graph[T comparable, N Number] struct {
 	nodes    map[T]int
-	edges    map[T][]NodeWeight[T, N]
+	edges    map[T][]*NodeWeight[T, N]
 	directed bool
 }
 
@@ -21,7 +25,7 @@ type Graph[T comparable, N Number] struct {
 func NewDirectedGraph[T comparable, N Number]() *Graph[T, N] {
 	return &Graph[T, N]{
 		nodes:    make(map[T]int),
-		edges:    make(map[T][]NodeWeight[T, N]),
+		edges:    make(map[T][]*NodeWeight[T, N]),
 		directed: true,
 	}
 }
@@ -30,7 +34,7 @@ func NewDirectedGraph[T comparable, N Number]() *Graph[T, N] {
 func NewUndirectedGraph[T comparable, N Number]() *Graph[T, N] {
 	return &Graph[T, N]{
 		nodes:    make(map[T]int),
-		edges:    make(map[T][]NodeWeight[T, N]),
+		edges:    make(map[T][]*NodeWeight[T, N]),
 		directed: false,
 	}
 }
@@ -44,10 +48,15 @@ func (g *Graph[T, N]) NumberOfNodes() int {
 }
 
 func (g *Graph[T, N]) NumberOfEdges() int {
+	n := 0
+	for _, edges := range g.edges {
+		n += len(edges)
+	}
+
 	if g.directed {
-		return len(g.edges)
+		return n
 	} else {
-		return len(g.edges) / 2
+		return n / 2
 	}
 }
 
@@ -71,19 +80,14 @@ func (g *Graph[T, N]) AddEdge(source, dest T, weight N) {
 }
 
 func (g *Graph[T, N]) addEdge(source, dest T, weight N) {
-	if !g.HasNode(source) {
-		panic("Invalid 'source' node")
-	}
-	if !g.HasNode(dest) {
-		panic("Invalid 'dest' node")
-	}
-	g.edges[source] = append(g.edges[source], NodeWeight[T, N]{
+	g.validatePathNodes(source, dest)
+	g.edges[source] = append(g.edges[source], &NodeWeight[T, N]{
 		Node:   dest,
 		Weight: weight,
 	})
 }
 
-func (g *Graph[T, N]) Neighbors(n T) []NodeWeight[T, N] {
+func (g *Graph[T, N]) Neighbors(n T) []*NodeWeight[T, N] {
 	return g.edges[n]
 }
 
@@ -96,6 +100,49 @@ func (g *Graph[T, N]) validatePathNodes(source, dest T) {
 	}
 }
 
+func (g *Graph[T, N]) RemoveNode(node T) {
+	if !g.HasNode(node) {
+		panic("Invalid node")
+	}
+	delete(g.nodes, node)
+	delete(g.edges, node)
+
+	for other, edges := range g.edges {
+		g.edges[other] = slices.DeleteFunc(edges, func(e *NodeWeight[T, N]) bool {
+			if e.Node == node {
+				return true
+			}
+			return false
+		})
+	}
+}
+
+func (g *Graph[T, N]) RemoveEdge(source, dest T) {
+	g.removeEdge(source, dest)
+	if !g.directed {
+		g.removeEdge(dest, source)
+	}
+}
+
+func (g *Graph[T, N]) removeEdge(source, dest T) {
+	g.validatePathNodes(source, dest)
+
+	g.edges[source] = slices.DeleteFunc(g.edges[source], func(e *NodeWeight[T, N]) bool {
+		if e.Node == dest {
+			return true
+		}
+		return false
+	})
+}
+
+func (g *Graph[T, N]) Degree() map[T]int {
+	res := make(map[T]int, len(g.edges))
+	for node, edges := range g.edges {
+		res[node] = len(edges)
+	}
+	return res
+}
+
 type EdgeIterator[T comparable, N Number] struct {
 	g     *Graph[T, N]
 	nodes []T
@@ -105,8 +152,10 @@ type EdgeIterator[T comparable, N Number] struct {
 
 func (g *Graph[T, N]) Edges() *EdgeIterator[T, N] {
 	nodes := make([]T, len(g.nodes))
-	for n, i := range g.nodes {
+	i := 0
+	for n := range g.nodes {
 		nodes[i] = n
+		i++
 	}
 
 	return &EdgeIterator[T, N]{
@@ -118,7 +167,7 @@ func (g *Graph[T, N]) Edges() *EdgeIterator[T, N] {
 func (it *EdgeIterator[T, N]) Next() bool {
 	for len(it.nodes) > 0 {
 		for i := it.i; i < len(it.g.edges[it.nodes[0]]); i++ {
-			it.edge = &it.g.edges[it.nodes[0]][i]
+			it.edge = it.g.edges[it.nodes[0]][i]
 			if it.g.directed || it.g.nodes[it.nodes[0]] <= it.g.nodes[it.edge.Node] {
 				it.i = i + 1
 				return true
@@ -131,8 +180,8 @@ func (it *EdgeIterator[T, N]) Next() bool {
 	return false
 }
 
-func (it *EdgeIterator[T, N]) Get() WeightedEdge[T, N] {
-	return WeightedEdge[T, N]{
+func (it *EdgeIterator[T, N]) Get() *WeightedEdge[T, N] {
+	return &WeightedEdge[T, N]{
 		From:   it.nodes[0],
 		To:     it.edge.Node,
 		Weight: it.edge.Weight,

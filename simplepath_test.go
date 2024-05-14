@@ -84,7 +84,7 @@ func TestAllSimplePathsWithHeuristic(t *testing.T) {
 	}
 	t.Log(distances)
 
-	it := g.AllSimplePathsWithHeuristic(source, dest, func(i, j NodeWeight[int, int]) int {
+	it := g.AllSimplePathsWithHeuristic(source, dest, func(i, j *NodeWeight[int, int]) int {
 		return distances[i.Node] - distances[j.Node]
 	})
 

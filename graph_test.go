@@ -57,9 +57,36 @@ func TestGraphStruct(t *testing.T) {
 	g.AddEdge(nodes[0], nodes[1], 1)
 
 	if g.NumberOfNodes() != 5 {
-		t.Fatal("Invalid number of nodes")
+		t.Fatalf("Invalid number of nodes: %d", g.NumberOfNodes())
 	}
 	if g.NumberOfEdges() != 1 {
+		t.Fatalf("Invalid number of edges: %v", g.NumberOfEdges())
+	}
+}
+
+func TestRemoveNode(t *testing.T) {
+	g := WikipediaGraph()
+	g.RemoveNode(1)
+	if g.NumberOfNodes() != 5 {
+		t.Fatalf("Invalid number of nodes: %d", g.NumberOfNodes())
+	}
+	if g.NumberOfEdges() != 6 {
+		t.Fatalf("Invalid number of edges: %v", g.NumberOfEdges())
+	}
+}
+
+func TestRemoveEdge(t *testing.T) {
+	g := WikipediaGraph()
+	g.RemoveEdge(1, 6)
+
+	n := 0
+	it := g.Edges()
+	for it.Next() {
+		t.Log(it.Get())
+		n++
+	}
+
+	if n != 8 {
 		t.Fatal("Invalid number of edges")
 	}
 }
