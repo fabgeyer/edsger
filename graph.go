@@ -143,6 +143,14 @@ func (g *Graph[T, N]) Degree() map[T]int {
 	return res
 }
 
+func (g *Graph[T, N]) Nodes() []T {
+	res := make([]T, len(g.nodes))
+	for n, i := range g.nodes {
+		res[i] = n
+	}
+	return res
+}
+
 type EdgeIterator[T comparable, N Number] struct {
 	g     *Graph[T, N]
 	nodes []T
