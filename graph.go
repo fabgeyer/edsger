@@ -1,6 +1,7 @@
 package edsger
 
 import (
+	"maps"
 	"slices"
 )
 
@@ -36,6 +37,18 @@ func NewUndirectedGraph[T comparable, N Number]() *Graph[T, N] {
 		nodes:    make(map[T]int),
 		edges:    make(map[T][]*NodeWeight[T, N]),
 		directed: false,
+	}
+}
+
+func (g *Graph[T, N]) Clone() *Graph[T, N] {
+	edges := make(map[T][]*NodeWeight[T, N], len(g.edges))
+	for k, v := range g.edges {
+		edges[k] = slices.Clone(v)
+	}
+	return &Graph[T, N]{
+		nodes:    maps.Clone(g.nodes),
+		edges:    edges,
+		directed: g.directed,
 	}
 }
 
@@ -89,6 +102,33 @@ func (g *Graph[T, N]) addEdge(source, dest T, weight N) {
 
 func (g *Graph[T, N]) Neighbors(n T) []*NodeWeight[T, N] {
 	return g.edges[n]
+}
+
+func (g *Graph[T, N]) AllSuccessors() map[T]map[T]bool {
+	res := make(map[T]map[T]bool, len(g.nodes))
+	for src, edges := range g.edges {
+		if len(edges) == 0 {
+			continue
+		}
+		res[src] = make(map[T]bool, len(edges))
+		for _, dst := range edges {
+			res[src][dst.Node] = true
+		}
+	}
+	return res
+}
+
+func (g *Graph[T, N]) AllPredecessors() map[T]map[T]bool {
+	res := make(map[T]map[T]bool, len(g.nodes))
+	for src, edges := range g.edges {
+		for _, dst := range edges {
+			if res[dst.Node] == nil {
+				res[dst.Node] = make(map[T]bool)
+			}
+			res[dst.Node][src] = true
+		}
+	}
+	return res
 }
 
 func (g *Graph[T, N]) validatePathNodes(source, dest T) {
@@ -149,6 +189,24 @@ func (g *Graph[T, N]) Nodes() []T {
 		res[i] = n
 	}
 	return res
+}
+
+func (g *Graph[T, N]) ApplyNodes(fn func(T) bool) {
+	for n := range g.nodes {
+		if !fn(n) {
+			return
+		}
+	}
+}
+
+func (g *Graph[T, N]) ApplyEdges(fn func(T, T, N) bool) {
+	for src, edges := range g.edges {
+		for _, edge := range edges {
+			if !fn(src, edge.Node, edge.Weight) {
+				return
+			}
+		}
+	}
 }
 
 type EdgeIterator[T comparable, N Number] struct {
