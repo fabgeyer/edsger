@@ -100,6 +100,16 @@ func (g *Graph[T, N]) addEdge(source, dest T, weight N) {
 	})
 }
 
+func (g *Graph[T, N]) HasEdge(source, dest T) bool {
+	g.validatePathNodes(source, dest)
+	for _, edge := range g.edges[source] {
+		if edge.Node == dest {
+			return true
+		}
+	}
+	return false
+}
+
 func (g *Graph[T, N]) Neighbors(n T) []*NodeWeight[T, N] {
 	return g.edges[n]
 }
@@ -183,7 +193,15 @@ func (g *Graph[T, N]) Degree() map[T]int {
 	return res
 }
 
-func (g *Graph[T, N]) Nodes() []T {
+func (g *Graph[T, N]) Nodes(yield func(n T) bool) {
+	for n := range g.nodes {
+		if !yield(n) {
+			return
+		}
+	}
+}
+
+func (g *Graph[T, N]) NodesList() []T {
 	res := make([]T, len(g.nodes))
 	for n, i := range g.nodes {
 		res[i] = n
@@ -191,65 +209,20 @@ func (g *Graph[T, N]) Nodes() []T {
 	return res
 }
 
-func (g *Graph[T, N]) ApplyNodes(fn func(T) bool) {
-	for n := range g.nodes {
-		if !fn(n) {
-			return
-		}
-	}
-}
-
-func (g *Graph[T, N]) ApplyEdges(fn func(T, T, N) bool) {
+func (g *Graph[T, N]) Edges(yield func(x *WeightedEdge[T, N]) bool) {
 	for src, edges := range g.edges {
+		srcid := g.nodes[src]
 		for _, edge := range edges {
-			if !fn(src, edge.Node, edge.Weight) {
+			if !g.directed && srcid <= g.nodes[edge.Node] {
+				continue
+			}
+			if !yield(&WeightedEdge[T, N]{
+				From:   src,
+				To:     edge.Node,
+				Weight: edge.Weight,
+			}) {
 				return
 			}
 		}
-	}
-}
-
-type EdgeIterator[T comparable, N Number] struct {
-	g     *Graph[T, N]
-	nodes []T
-	i     int
-	edge  *NodeWeight[T, N]
-}
-
-func (g *Graph[T, N]) Edges() *EdgeIterator[T, N] {
-	nodes := make([]T, len(g.nodes))
-	i := 0
-	for n := range g.nodes {
-		nodes[i] = n
-		i++
-	}
-
-	return &EdgeIterator[T, N]{
-		g:     g,
-		nodes: nodes,
-	}
-}
-
-func (it *EdgeIterator[T, N]) Next() bool {
-	for len(it.nodes) > 0 {
-		for i := it.i; i < len(it.g.edges[it.nodes[0]]); i++ {
-			it.edge = it.g.edges[it.nodes[0]][i]
-			if it.g.directed || it.g.nodes[it.nodes[0]] <= it.g.nodes[it.edge.Node] {
-				it.i = i + 1
-				return true
-			}
-		}
-
-		it.nodes = it.nodes[1:]
-		it.i = 0
-	}
-	return false
-}
-
-func (it *EdgeIterator[T, N]) Get() *WeightedEdge[T, N] {
-	return &WeightedEdge[T, N]{
-		From:   it.nodes[0],
-		To:     it.edge.Node,
-		Weight: it.edge.Weight,
 	}
 }

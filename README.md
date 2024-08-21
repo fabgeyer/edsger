@@ -2,7 +2,8 @@
 
 `edsger` is a simple Go graph library defining a graph datastructure and the following algorithms:
 - Shortest path finding based on Dijkstra's shortest path algorithm
-- Simple path finding based on DFS graph traversal
+- Simple path finding based on depth first search (DFS) graph traversal
+- Topological ordering for directed acyclic graphs (DAGs)
 
 ## Installation
 

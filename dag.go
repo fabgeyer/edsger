@@ -24,12 +24,11 @@ func (g *Graph[T, N]) TopologicalOrdering() ([]T, error) {
 
 	// Set of all nodes with no incoming edge
 	nodesWithoutPredecessors := make([]T, 0, len(g.nodes))
-	g.ApplyNodes(func(n T) bool {
+	for n := range g.Nodes {
 		if len(allPredecessors[n]) == 0 {
 			nodesWithoutPredecessors = append(nodesWithoutPredecessors, n)
 		}
-		return true
-	})
+	}
 
 	var n T
 	res := make([]T, 0, len(g.nodes))

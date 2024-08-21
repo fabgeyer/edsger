@@ -77,16 +77,15 @@ func TestRemoveNode(t *testing.T) {
 
 func TestRemoveEdge(t *testing.T) {
 	g := WikipediaGraph()
-	g.RemoveEdge(1, 6)
+	n := g.NumberOfEdges()
 
-	n := 0
-	it := g.Edges()
-	for it.Next() {
-		t.Log(it.Get())
-		n++
+	g.RemoveEdge(1, 6)
+	for edge := range g.Edges {
+		t.Log(edge)
+		n--
 	}
 
-	if n != 8 {
+	if n != 1 {
 		t.Fatal("Invalid number of edges")
 	}
 }
@@ -95,13 +94,26 @@ func TestEdgeIterator(t *testing.T) {
 	g := WikipediaGraph()
 
 	n := 0
-	it := g.Edges()
-	for it.Next() {
-		t.Log(it.Get())
+	for edge := range g.Edges {
+		t.Log(edge)
 		n++
 	}
 
-	if n != 9 {
+	if n != g.NumberOfEdges() {
+		t.Fatal("Invalid number of edges")
+	}
+}
+
+func TestNodeIterator(t *testing.T) {
+	g := WikipediaGraph()
+
+	n := 0
+	for node := range g.Nodes {
+		t.Log(node)
+		n++
+	}
+
+	if n != g.NumberOfNodes() {
 		t.Fatal("Invalid number of edges")
 	}
 }
