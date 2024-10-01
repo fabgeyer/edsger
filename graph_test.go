@@ -80,7 +80,7 @@ func TestRemoveEdge(t *testing.T) {
 	n := g.NumberOfEdges()
 
 	g.RemoveEdge(1, 6)
-	for edge := range g.Edges {
+	for edge := range g.Edges() {
 		t.Log(edge)
 		n--
 	}
@@ -94,7 +94,7 @@ func TestEdgeIterator(t *testing.T) {
 	g := WikipediaGraph()
 
 	n := 0
-	for edge := range g.Edges {
+	for edge := range g.Edges() {
 		t.Log(edge)
 		n++
 	}
@@ -108,7 +108,7 @@ func TestNodeIterator(t *testing.T) {
 	g := WikipediaGraph()
 
 	n := 0
-	for node := range g.Nodes {
+	for node := range g.Nodes() {
 		t.Log(node)
 		n++
 	}

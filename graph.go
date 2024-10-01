@@ -1,6 +1,7 @@
 package edsger
 
 import (
+	"iter"
 	"maps"
 	"slices"
 )
@@ -193,10 +194,12 @@ func (g *Graph[T, N]) Degree() map[T]int {
 	return res
 }
 
-func (g *Graph[T, N]) Nodes(yield func(n T) bool) {
-	for n := range g.nodes {
-		if !yield(n) {
-			return
+func (g *Graph[T, N]) Nodes() iter.Seq[T] {
+	return func(yield func(n T) bool) {
+		for n := range g.nodes {
+			if !yield(n) {
+				return
+			}
 		}
 	}
 }
@@ -209,19 +212,21 @@ func (g *Graph[T, N]) NodesList() []T {
 	return res
 }
 
-func (g *Graph[T, N]) Edges(yield func(x *WeightedEdge[T, N]) bool) {
-	for src, edges := range g.edges {
-		srcid := g.nodes[src]
-		for _, edge := range edges {
-			if !g.directed && srcid <= g.nodes[edge.Node] {
-				continue
-			}
-			if !yield(&WeightedEdge[T, N]{
-				From:   src,
-				To:     edge.Node,
-				Weight: edge.Weight,
-			}) {
-				return
+func (g *Graph[T, N]) Edges() iter.Seq[*WeightedEdge[T, N]] {
+	return func(yield func(x *WeightedEdge[T, N]) bool) {
+		for src, edges := range g.edges {
+			srcid := g.nodes[src]
+			for _, edge := range edges {
+				if !g.directed && srcid <= g.nodes[edge.Node] {
+					continue
+				}
+				if !yield(&WeightedEdge[T, N]{
+					From:   src,
+					To:     edge.Node,
+					Weight: edge.Weight,
+				}) {
+					return
+				}
 			}
 		}
 	}
