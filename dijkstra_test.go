@@ -12,6 +12,13 @@ func TestDijkstraWikipediaGraph(t *testing.T) {
 
 	t.Log(g.AllDijkstraShortestPathsMap(1, 5))
 	t.Log(g.AllShortestPathsNodes(1, 5))
+
+	minCost := 21
+	if path, cost := g.DijkstraShortestPathWithMinCost(1, 5, minCost); cost < minCost {
+		t.Fatal("Invalid cost")
+	} else {
+		t.Log(path, cost)
+	}
 }
 
 func TestDijkstraMultiplePaths(t *testing.T) {

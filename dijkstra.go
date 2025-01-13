@@ -74,7 +74,7 @@ func (g *Graph[T, N]) validateAllWeightsArePositive() {
 	}
 }
 
-func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool) (map[T][]T, N) {
+func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool, minCost N) (map[T][]T, N) {
 	// Implementation of Dijkstra's shortest path algorithm using a priority queue
 
 	g.validateAllWeightsArePositive()
@@ -94,6 +94,10 @@ func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool) (m
 
 	for q.Len() > 0 {
 		u := heap.Pop(q).(T)
+		if u == dest && q.pr[u] >= minCost {
+			break
+		}
+
 		for _, v := range g.Neighbors(u) {
 			var alt N
 			if q.pr[u] == maxW {
@@ -104,8 +108,13 @@ func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool) (m
 			}
 
 			if alt < q.pr[v.Node] {
-				prev[v.Node] = []T{u}
-				q.update(v.Node, alt)
+				if v.Node != dest || alt >= minCost {
+					// For nodes other than destination, update normally
+					// For destination, only update if it meets minimum cost
+					prev[v.Node] = []T{u}
+					q.update(v.Node, alt)
+				}
+
 			} else if withMultiplePaths && alt == q.pr[v.Node] {
 				prev[v.Node] = append(prev[v.Node], u)
 				q.update(v.Node, alt)
@@ -120,8 +129,7 @@ func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool) (m
 	return prev, q.pr[dest]
 }
 
-func (g *Graph[T, N]) DijkstraShortestPath(source, dest T) ([]T, N) {
-	prev, dist := g.shortestPathMap(source, dest, false)
+func pathFromShortestPathMap[T comparable, N Number](dest T, prev map[T][]T, dist N) ([]T, N) {
 	if prev == nil {
 		// No path was found
 		return nil, 0
@@ -141,14 +149,24 @@ func (g *Graph[T, N]) DijkstraShortestPath(source, dest T) ([]T, N) {
 	return path, dist
 }
 
+func (g *Graph[T, N]) DijkstraShortestPath(source, dest T) ([]T, N) {
+	prev, dist := g.shortestPathMap(source, dest, false, 0)
+	return pathFromShortestPathMap(dest, prev, dist)
+}
+
+func (g *Graph[T, N]) DijkstraShortestPathWithMinCost(source, dest T, minCost N) ([]T, N) {
+	prev, dist := g.shortestPathMap(source, dest, false, minCost)
+	return pathFromShortestPathMap(dest, prev, dist)
+}
+
 func (g *Graph[T, N]) AllDijkstraShortestPathsMap(source, dest T) (map[T][]T, N) {
-	return g.shortestPathMap(source, dest, true)
+	return g.shortestPathMap(source, dest, true, 0)
 }
 
 func (g *Graph[T, N]) AllShortestPathsNodes(source, dest T) ([]T, N) {
 	// Returns all nodes which are part of the shortest path
 
-	prev, dist := g.shortestPathMap(source, dest, true)
+	prev, dist := g.shortestPathMap(source, dest, true, 0)
 	if prev == nil {
 		// No path was found
 		return nil, 0
@@ -187,7 +205,7 @@ type DijkstraDisjointShortestPathIterator[T comparable, N Number] struct {
 }
 
 func (g *Graph[T, N]) AllDijkstraDisjointShortestPaths(source, dest T) *DijkstraDisjointShortestPathIterator[T, N] {
-	prev, dist := g.shortestPathMap(source, dest, true)
+	prev, dist := g.shortestPathMap(source, dest, true, 0)
 	if prev == nil {
 		return &DijkstraDisjointShortestPathIterator[T, N]{}
 	}
