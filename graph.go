@@ -169,10 +169,7 @@ func (g *Graph[T, N]) RemoveNode(node T) {
 
 	for other, edges := range g.edges {
 		g.edges[other] = slices.DeleteFunc(edges, func(e *NodeWeight[T, N]) bool {
-			if e.Node == node {
-				return true
-			}
-			return false
+			return e.Node == node
 		})
 	}
 }
@@ -188,10 +185,7 @@ func (g *Graph[T, N]) removeEdge(source, dest T) {
 	g.validatePathNodes(source, dest)
 
 	g.edges[source] = slices.DeleteFunc(g.edges[source], func(e *NodeWeight[T, N]) bool {
-		if e.Node == dest {
-			return true
-		}
-		return false
+		return e.Node == dest
 	})
 }
 
