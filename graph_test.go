@@ -62,6 +62,38 @@ func TestGraphStruct(t *testing.T) {
 	if g.NumberOfEdges() != 1 {
 		t.Fatalf("Invalid number of edges: %v", g.NumberOfEdges())
 	}
+
+	if !g.HasEdge(nodes[0], nodes[1]) {
+		t.Fatal("Missing edge")
+	}
+	if !g.HasEdge(nodes[1], nodes[0]) {
+		t.Fatal("Missing edge")
+	}
+	if g.HasEdge(nodes[1], nodes[2]) {
+		t.Fatal("Unexpected edge")
+	}
+
+	w, ok := g.GetEdge(nodes[0], nodes[1])
+	if !ok {
+		t.Fatal("Missing edge")
+	}
+	if w != 1 {
+		t.Fatal("Unexpected weight")
+	}
+
+	i := 0
+	for n, d := range g.Degree() {
+		if n != nodes[0] && n != nodes[1] {
+			t.Fatal("Invalid node")
+		}
+		if d != 1 {
+			t.Fatal("Invalid degree")
+		}
+		i++
+	}
+	if i != 2 {
+		t.Fatal("Invalid number of nodes")
+	}
 }
 
 func TestRemoveNode(t *testing.T) {

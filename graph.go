@@ -87,6 +87,10 @@ func (g *Graph[T, N]) HasNode(n T) bool {
 }
 
 func (g *Graph[T, N]) AddEdge(source, dest T, weight N) {
+	if g.HasEdge(source, dest) {
+		panic("Edge already defined")
+	}
+
 	g.addEdge(source, dest, weight)
 	if !g.directed {
 		g.addEdge(dest, source, weight)
@@ -101,14 +105,19 @@ func (g *Graph[T, N]) addEdge(source, dest T, weight N) {
 	})
 }
 
-func (g *Graph[T, N]) HasEdge(source, dest T) bool {
+func (g *Graph[T, N]) GetEdge(source, dest T) (N, bool) {
 	g.validatePathNodes(source, dest)
 	for _, edge := range g.edges[source] {
 		if edge.Node == dest {
-			return true
+			return edge.Weight, true
 		}
 	}
-	return false
+	return N(0), false
+}
+
+func (g *Graph[T, N]) HasEdge(source, dest T) bool {
+	_, ok := g.GetEdge(source, dest)
+	return ok
 }
 
 func (g *Graph[T, N]) Neighbors(n T) []*NodeWeight[T, N] {
@@ -186,12 +195,14 @@ func (g *Graph[T, N]) removeEdge(source, dest T) {
 	})
 }
 
-func (g *Graph[T, N]) Degree() map[T]int {
-	res := make(map[T]int, len(g.edges))
-	for node, edges := range g.edges {
-		res[node] = len(edges)
+func (g *Graph[T, N]) Degree() iter.Seq2[T, int] {
+	return func(yield func(n T, d int) bool) {
+		for node, edges := range g.edges {
+			if !yield(node, len(edges)) {
+				return
+			}
+		}
 	}
-	return res
 }
 
 func (g *Graph[T, N]) Nodes() iter.Seq[T] {
