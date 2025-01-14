@@ -74,7 +74,7 @@ func (g *Graph[T, N]) validateAllWeightsArePositive() {
 	}
 }
 
-func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool, minCost N) (map[T][]T, N) {
+func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool) (map[T][]T, N) {
 	// Implementation of Dijkstra's shortest path algorithm using a priority queue
 
 	g.validateAllWeightsArePositive()
@@ -94,7 +94,7 @@ func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool, mi
 
 	for q.Len() > 0 {
 		u := heap.Pop(q).(T)
-		if u == dest && q.pr[u] >= minCost {
+		if u == dest {
 			break
 		}
 
@@ -108,12 +108,8 @@ func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool, mi
 			}
 
 			if alt < q.pr[v.Node] {
-				if v.Node != dest || alt >= minCost {
-					// For nodes other than destination, update normally
-					// For destination, only update if it meets minimum cost
-					prev[v.Node] = []T{u}
-					q.update(v.Node, alt)
-				}
+				prev[v.Node] = []T{u}
+				q.update(v.Node, alt)
 
 			} else if withMultiplePaths && alt == q.pr[v.Node] {
 				prev[v.Node] = append(prev[v.Node], u)
@@ -150,23 +146,18 @@ func pathFromShortestPathMap[T comparable, N Number](dest T, prev map[T][]T, dis
 }
 
 func (g *Graph[T, N]) DijkstraShortestPath(source, dest T) ([]T, N) {
-	prev, dist := g.shortestPathMap(source, dest, false, 0)
-	return pathFromShortestPathMap(dest, prev, dist)
-}
-
-func (g *Graph[T, N]) DijkstraShortestPathWithMinCost(source, dest T, minCost N) ([]T, N) {
-	prev, dist := g.shortestPathMap(source, dest, false, minCost)
+	prev, dist := g.shortestPathMap(source, dest, false)
 	return pathFromShortestPathMap(dest, prev, dist)
 }
 
 func (g *Graph[T, N]) AllDijkstraShortestPathsMap(source, dest T) (map[T][]T, N) {
-	return g.shortestPathMap(source, dest, true, 0)
+	return g.shortestPathMap(source, dest, true)
 }
 
 func (g *Graph[T, N]) AllShortestPathsNodes(source, dest T) ([]T, N) {
 	// Returns all nodes which are part of the shortest path
 
-	prev, dist := g.shortestPathMap(source, dest, true, 0)
+	prev, dist := g.shortestPathMap(source, dest, true)
 	if prev == nil {
 		// No path was found
 		return nil, 0
@@ -205,7 +196,7 @@ type DijkstraDisjointShortestPathIterator[T comparable, N Number] struct {
 }
 
 func (g *Graph[T, N]) AllDijkstraDisjointShortestPaths(source, dest T) *DijkstraDisjointShortestPathIterator[T, N] {
-	prev, dist := g.shortestPathMap(source, dest, true, 0)
+	prev, dist := g.shortestPathMap(source, dest, true)
 	if prev == nil {
 		return &DijkstraDisjointShortestPathIterator[T, N]{}
 	}
@@ -253,4 +244,92 @@ func (it *DijkstraDisjointShortestPathIterator[T, N]) Next() bool {
 
 func (it *DijkstraDisjointShortestPathIterator[T, N]) Get() ([]T, N) {
 	return it.path, it.dist
+}
+
+type item[T comparable, N Number] struct {
+	node T
+	path []T
+	cost N
+}
+
+// A basicPriorityQueue implements heap.Interface and holds items.
+type basicPriorityQueue[T comparable, N Number] []*item[T, N]
+
+func (pq basicPriorityQueue[T, N]) Len() int { return len(pq) }
+
+func (pq basicPriorityQueue[T, N]) Less(i, j int) bool {
+	// We want Pop to give us the highest, not lowest, cost so we use greater than here.
+	return pq[i].cost < pq[j].cost
+}
+
+func (pq basicPriorityQueue[T, N]) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+}
+
+func (pq *basicPriorityQueue[T, N]) Push(x any) {
+	item := x.(*item[T, N])
+	*pq = append(*pq, item)
+}
+
+func (pq *basicPriorityQueue[T, N]) Pop() any {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	old[n-1] = nil // don't stop the GC from reclaiming the item eventually
+	*pq = old[0 : n-1]
+	return item
+}
+
+func (g *Graph[T, N]) ShortestPathWithMinCost(source, dest T, minCost N) ([]T, N) {
+	q := basicPriorityQueue[T, N]{&item[T, N]{
+		node: source,
+		cost: 0,
+		path: []T{source},
+	}}
+
+	visited := make(map[T]map[N]bool, g.NumberOfNodes())
+	for node := range g.Nodes() {
+		visited[node] = make(map[N]bool)
+	}
+
+	maxW := MaxValue[N]()
+	for q.Len() > 0 {
+		u := heap.Pop(&q).(*item[T, N])
+		if u.node == dest && u.cost >= minCost {
+			return u.path, u.cost
+		}
+
+		for _, v := range g.Neighbors(u.node) {
+			var alt N
+			if u.cost == maxW {
+				// We prevent here any integer overflow
+				alt = maxW
+			} else {
+				alt = u.cost + v.Weight
+			}
+
+			if visited[v.Node][alt] {
+				continue
+			}
+			visited[v.Node][alt] = true
+
+			if slices.Contains(u.path, v.Node) { // Avoid loops
+				continue
+			}
+
+			if v.Node != dest || alt >= minCost {
+				path := make([]T, len(u.path)+1)
+				copy(path, u.path)
+				path[len(path)-1] = v.Node
+
+				heap.Push(&q, &item[T, N]{
+					node: v.Node,
+					cost: alt,
+					path: path,
+				})
+			}
+		}
+	}
+
+	return nil, maxW
 }

@@ -2,6 +2,23 @@ package edsger
 
 import "testing"
 
+func FullyConnectedGraph(n int) *Graph[int, int] {
+	g := NewUndirectedGraph[int, int]()
+	for i := range n {
+		g.AddNode(i)
+	}
+	for i := range n {
+		for j := range n {
+			if i != j {
+				if !g.HasEdge(i, j) {
+					g.AddEdge(i, j, 1)
+				}
+			}
+		}
+	}
+	return g
+}
+
 func WikipediaGraph() *Graph[int, int] {
 	// Source: https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
 	g := NewUndirectedGraph[int, int]()
