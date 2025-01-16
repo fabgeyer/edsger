@@ -120,6 +120,17 @@ func (g *Graph[T, N]) HasEdge(source, dest T) bool {
 	return ok
 }
 
+func (g *Graph[T, N]) UpdateEdge(source, dest T, newWeight N) {
+	g.validatePathNodes(source, dest)
+	for _, edge := range g.edges[source] {
+		if edge.Node == dest {
+			edge.Weight = newWeight
+			return
+		}
+	}
+	panic("Edge not found")
+}
+
 func (g *Graph[T, N]) Neighbors(n T) []*NodeWeight[T, N] {
 	return g.edges[n]
 }
