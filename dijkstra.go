@@ -3,6 +3,7 @@ package edsger
 import (
 	"container/heap"
 	"fmt"
+	"math"
 	"math/rand"
 	"slices"
 )
@@ -74,7 +75,7 @@ func (g *Graph[T, N]) validateAllWeightsArePositive() {
 	}
 }
 
-func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool) (map[T][]T, N) {
+func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool, excludedNodes map[T]bool) (map[T][]T, N) {
 	// Implementation of Dijkstra's shortest path algorithm using a priority queue
 
 	g.validateAllWeightsArePositive()
@@ -87,7 +88,7 @@ func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool) (m
 	for n := range g.nodes {
 		if n == source {
 			q.addWithPriority(n, 0)
-		} else {
+		} else if _, ok := excludedNodes[n]; !ok {
 			q.addWithPriority(n, maxW)
 		}
 	}
@@ -99,6 +100,10 @@ func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool) (m
 		}
 
 		for _, v := range g.Neighbors(u) {
+			if _, ok := excludedNodes[v.Node]; ok {
+				continue
+			}
+
 			var alt N
 			if q.pr[u] == maxW {
 				// We prevent here any integer overflow
@@ -146,18 +151,23 @@ func pathFromShortestPathMap[T comparable, N Number](dest T, prev map[T][]T, dis
 }
 
 func (g *Graph[T, N]) DijkstraShortestPath(source, dest T) ([]T, N) {
-	prev, dist := g.shortestPathMap(source, dest, false)
+	prev, dist := g.shortestPathMap(source, dest, false, nil)
+	return pathFromShortestPathMap(dest, prev, dist)
+}
+
+func (g *Graph[T, N]) DijkstraShortestPathWithExclusionMap(source, dest T, excludedNodes map[T]bool) ([]T, N) {
+	prev, dist := g.shortestPathMap(source, dest, false, excludedNodes)
 	return pathFromShortestPathMap(dest, prev, dist)
 }
 
 func (g *Graph[T, N]) AllDijkstraShortestPathsMap(source, dest T) (map[T][]T, N) {
-	return g.shortestPathMap(source, dest, true)
+	return g.shortestPathMap(source, dest, true, nil)
 }
 
 func (g *Graph[T, N]) AllShortestPathsNodes(source, dest T) ([]T, N) {
 	// Returns all nodes which are part of the shortest path
 
-	prev, dist := g.shortestPathMap(source, dest, true)
+	prev, dist := g.shortestPathMap(source, dest, true, nil)
 	if prev == nil {
 		// No path was found
 		return nil, 0
@@ -188,6 +198,11 @@ func (g *Graph[T, N]) AllShortestPathsNodes(source, dest T) ([]T, N) {
 	return res, dist
 }
 
+func (g *Graph[T, N]) DijkstraShortestPathWithoutNodes(source, dest T) ([]T, N) {
+	prev, dist := g.shortestPathMap(source, dest, false, nil)
+	return pathFromShortestPathMap(dest, prev, dist)
+}
+
 type DijkstraDisjointShortestPathIterator[T comparable, N Number] struct {
 	dest T
 	prev map[T][]T
@@ -196,7 +211,7 @@ type DijkstraDisjointShortestPathIterator[T comparable, N Number] struct {
 }
 
 func (g *Graph[T, N]) AllDijkstraDisjointShortestPaths(source, dest T) *DijkstraDisjointShortestPathIterator[T, N] {
-	prev, dist := g.shortestPathMap(source, dest, true)
+	prev, dist := g.shortestPathMap(source, dest, true, nil)
 	if prev == nil {
 		return &DijkstraDisjointShortestPathIterator[T, N]{}
 	}
@@ -332,4 +347,50 @@ func (g *Graph[T, N]) ShortestPathWithMinCost(source, dest T, minCost N) ([]T, N
 	}
 
 	return nil, maxW
+}
+
+func (g *Graph[T, N]) ShortestPathWithMinNodes(source, dest T, minNodes int) ([]T, int) {
+	q := basicPriorityQueue[T, int]{&item[T, int]{
+		node: source,
+		cost: 1,
+		path: []T{source},
+	}}
+
+	visited := make(map[T]map[int]bool, g.NumberOfNodes())
+	for node := range g.Nodes() {
+		visited[node] = make(map[int]bool)
+	}
+
+	for q.Len() > 0 {
+		u := heap.Pop(&q).(*item[T, int])
+		if u.node == dest && u.cost >= minNodes {
+			return u.path, u.cost
+		}
+
+		for _, v := range g.Neighbors(u.node) {
+			alt := u.cost + 1
+			if visited[v.Node][alt] {
+				continue
+			}
+			visited[v.Node][alt] = true
+
+			if slices.Contains(u.path, v.Node) { // Avoid loops
+				continue
+			}
+
+			if v.Node != dest || alt >= minNodes {
+				path := make([]T, len(u.path)+1)
+				copy(path, u.path)
+				path[len(path)-1] = v.Node
+
+				heap.Push(&q, &item[T, int]{
+					node: v.Node,
+					cost: alt,
+					path: path,
+				})
+			}
+		}
+	}
+
+	return nil, math.MaxInt
 }

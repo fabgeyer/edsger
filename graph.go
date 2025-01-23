@@ -131,8 +131,36 @@ func (g *Graph[T, N]) UpdateEdge(source, dest T, newWeight N) {
 	panic("Edge not found")
 }
 
+// For undirected graphs: returns a slices of all neighbors of node n
+// For directed graphs: returns a slice of all successor nodes of n
 func (g *Graph[T, N]) Neighbors(n T) []*NodeWeight[T, N] {
 	return g.edges[n]
+}
+
+// Returns an iterator over successor nodes of n.
+func (g *Graph[T, N]) Successors(node T) iter.Seq[T] {
+	return func(yield func(n T) bool) {
+		for _, nw := range g.edges[node] {
+			if !yield(nw.Node) {
+				return
+			}
+		}
+	}
+}
+
+// Returns an iterator over predecessor nodes of n.
+func (g *Graph[T, N]) Predecessors(node T) iter.Seq[T] {
+	return func(yield func(n T) bool) {
+		for src, edges := range g.edges {
+			for _, dst := range edges {
+				if dst.Node == node {
+					if !yield(src) {
+						return
+					}
+				}
+			}
+		}
+	}
 }
 
 func (g *Graph[T, N]) AllSuccessors() map[T]map[T]bool {

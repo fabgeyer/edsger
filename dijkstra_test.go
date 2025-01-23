@@ -6,17 +6,31 @@ import (
 
 func TestFullyConnectedGraph(t *testing.T) {
 	g := FullyConnectedGraph(100)
-	for i := range 5 {
-		t.Log(i)
-		path, cost := g.ShortestPathWithMinCost(0, 1, i+1)
-		t.Log(i, path, cost)
-		if len(path) != i+2 {
-			t.Fatal("Invalid path:", path)
+	t.Run("ShortestPathWithMinCost", func(t *testing.T) {
+		for i := range 5 {
+			path, cost := g.ShortestPathWithMinCost(0, 1, i+1)
+			t.Log(i, path, cost)
+			if len(path) != i+2 {
+				t.Fatal("Invalid path:", path)
+			}
+			if cost < i+1 {
+				t.Fatal("Invalid cost:", cost)
+			}
 		}
-		if cost < i+1 {
-			t.Fatal("Invalid cost:", cost)
+	})
+
+	t.Run("ShortestPathWithMinNodes", func(t *testing.T) {
+		for i := range 10 {
+			path, cost := g.ShortestPathWithMinNodes(0, 1, i+1)
+			t.Log(i+1, path, cost)
+			if len(path) < i+1 {
+				t.Fatal("Invalid length:", len(path))
+			}
+			if cost < i+1 {
+				t.Fatal("Invalid length:", cost)
+			}
 		}
-	}
+	})
 }
 
 func TestDijkstraWikipediaGraph(t *testing.T) {

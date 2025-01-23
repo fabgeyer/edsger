@@ -1,8 +1,10 @@
 package edsger
 
 import (
+	"fmt"
 	"math"
 	"reflect"
+	"time"
 )
 
 type Integer interface {
@@ -68,6 +70,8 @@ func MaxValue[N Number]() N {
 		return N(MaxInt[uint32]())
 	case uint64:
 		return N(MaxInt[uint64]())
+	case time.Duration:
+		return N(MaxInt[int64]())
 	}
-	panic("Unknown type!")
+	panic(fmt.Sprintf("Unknown type: %T", v))
 }
