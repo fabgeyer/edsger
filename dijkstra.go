@@ -75,6 +75,51 @@ func (g *Graph[T, N]) validateAllWeightsArePositive() {
 	}
 }
 
+func (g *Graph[T, N]) sourceShortestPathMap(source T, withMultiplePaths bool, excludedNodes map[T]bool) map[T][]T {
+	// Implementation of Dijkstra's shortest path algorithm using a priority queue
+	g.validateAllWeightsArePositive()
+
+	prev := make(map[T][]T, len(g.nodes))
+	q := newPriorityQueue[T, N](len(g.nodes))
+
+	maxW := MaxValue[N]()
+	for n := range g.nodes {
+		if n == source {
+			q.addWithPriority(n, 0)
+		} else if _, ok := excludedNodes[n]; !ok {
+			q.addWithPriority(n, maxW)
+		}
+	}
+
+	for q.Len() > 0 {
+		u := heap.Pop(q).(T)
+		for _, v := range g.Neighbors(u) {
+			if _, ok := excludedNodes[v.Node]; ok {
+				continue
+			}
+
+			var alt N
+			if q.pr[u] == maxW {
+				// We prevent here any integer overflow
+				alt = maxW
+			} else {
+				alt = q.pr[u] + v.Weight
+			}
+
+			if alt < q.pr[v.Node] {
+				prev[v.Node] = []T{u}
+				q.update(v.Node, alt)
+
+			} else if withMultiplePaths && alt == q.pr[v.Node] {
+				prev[v.Node] = append(prev[v.Node], u)
+				q.update(v.Node, alt)
+			}
+		}
+	}
+
+	return prev
+}
+
 func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool, excludedNodes map[T]bool) (map[T][]T, N) {
 	// Implementation of Dijkstra's shortest path algorithm using a priority queue
 
