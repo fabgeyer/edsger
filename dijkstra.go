@@ -79,7 +79,7 @@ func (g *Graph[T, N]) sourceShortestPathMap(source T, withMultiplePaths bool, ex
 	// Implementation of Dijkstra's shortest path algorithm using a priority queue
 	g.validateAllWeightsArePositive()
 
-	prev := make(map[T][]T, len(g.nodes))
+	prev := make(map[T][]T, g.NumberOfNodes())
 	q := newPriorityQueue[T, N](len(g.nodes))
 
 	maxW := MaxValue[N]()
@@ -126,8 +126,8 @@ func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool, ex
 	g.validateAllWeightsArePositive()
 	g.validatePathNodes(source, dest)
 
-	prev := make(map[T][]T, len(g.nodes))
-	q := newPriorityQueue[T, N](len(g.nodes))
+	prev := make(map[T][]T, g.NumberOfNodes())
+	q := newPriorityQueue[T, N](g.NumberOfNodes())
 
 	maxW := MaxValue[N]()
 	for n := range g.nodes {
@@ -218,7 +218,7 @@ func (g *Graph[T, N]) AllShortestPathsNodes(source, dest T) ([]T, N) {
 		return nil, 0
 	}
 
-	visited := make(map[T]bool)
+	visited := make(map[T]bool, g.NumberOfNodes())
 	q := []T{dest}
 	for len(q) > 0 {
 		v := q[0]
@@ -349,7 +349,7 @@ func (g *Graph[T, N]) ShortestPathWithMinCost(source, dest T, minCost N) ([]T, N
 
 	visited := make(map[T]map[N]bool, g.NumberOfNodes())
 	for node := range g.Nodes() {
-		visited[node] = make(map[N]bool)
+		visited[node] = make(map[N]bool, g.NumberOfNodes())
 	}
 
 	maxW := MaxValue[N]()
@@ -403,7 +403,7 @@ func (g *Graph[T, N]) ShortestPathWithMinNodes(source, dest T, minNodes int) ([]
 
 	visited := make(map[T]map[int]bool, g.NumberOfNodes())
 	for node := range g.Nodes() {
-		visited[node] = make(map[int]bool)
+		visited[node] = make(map[int]bool, g.NumberOfNodes())
 	}
 
 	for q.Len() > 0 {
