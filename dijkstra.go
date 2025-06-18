@@ -9,95 +9,114 @@ import (
 )
 
 // Based on https://pkg.go.dev/container/heap
+type priorityItem[T comparable, N Number] struct {
+	node  T
+	prio  N
+	index int
+}
+
 type priorityQueue[T comparable, N Number] struct {
-	items []T
-	m     map[T]int // value to index
-	pr    map[T]N   // value to priority
+	items []*priorityItem[T, N]
+	m     map[T]*priorityItem[T, N]
 }
 
 func newPriorityQueue[T comparable, N Number](n int) *priorityQueue[T, N] {
 	return &priorityQueue[T, N]{
-		items: make([]T, 0, n),
-		m:     make(map[T]int, n),
-		pr:    make(map[T]N, n),
+		items: make([]*priorityItem[T, N], 0, n),
+		m:     make(map[T]*priorityItem[T, N], n),
 	}
 }
 
+// Implements sort.Interface
 func (pq *priorityQueue[T, N]) Len() int { return len(pq.items) }
 
-func (pq *priorityQueue[T, N]) Less(i, j int) bool { return pq.pr[pq.items[i]] < pq.pr[pq.items[j]] }
+// Implements sort.Interface
+func (pq *priorityQueue[T, N]) Less(i, j int) bool {
+	return pq.items[i].prio < pq.items[j].prio
+}
 
+// Implements sort.Interface
 func (pq *priorityQueue[T, N]) Swap(i, j int) {
 	pq.items[i], pq.items[j] = pq.items[j], pq.items[i]
-	pq.m[pq.items[i]] = i
-	pq.m[pq.items[j]] = j
+	pq.items[i].index = i
+	pq.items[j].index = j
 }
 
-func (pq *priorityQueue[T, N]) Push(x interface{}) {
-	n := len(pq.items)
-	item := x.(T)
-	pq.m[item] = n
-	pq.items = append(pq.items, item)
+// Implements heap.Interface
+func (pq *priorityQueue[T, N]) Push(x any) {
+	pq.Append(x.(T), MaxValue[N]())
 }
 
-func (pq *priorityQueue[T, N]) Pop() interface{} {
+// Implements heap.Interface
+func (pq *priorityQueue[T, N]) Pop() any {
 	old := pq.items
 	n := len(old)
-	item := old[n-1]
-	pq.m[item] = -1
+	pi := old[n-1]
+	pi.index = -1
 	pq.items = old[0 : n-1]
-	return item
+	return pi
+}
+
+func (pq *priorityQueue[T, N]) Append(item T, priority N) {
+	pi := &priorityItem[T, N]{
+		node:  item,
+		prio:  priority,
+		index: len(pq.items),
+	}
+	pq.items = append(pq.items, pi)
+	pq.m[item] = pi
 }
 
 // update modifies the priority of an item in the queue.
-func (pq *priorityQueue[T, N]) update(item T, priority N) {
-	pq.pr[item] = priority
-	heap.Fix(pq, pq.m[item])
+func (pq *priorityQueue[T, N]) update(pi *priorityItem[T, N], priority N) {
+	pi.prio = priority
+	if pi.index >= 0 {
+		heap.Fix(pq, pi.index)
+	}
 }
 
 // Implementation of Dijkstra's shortest path algorithm using a priority queue
 func (g *Graph[T, N]) sourceShortestPathMap(source T, withMultiplePaths bool, excludedNodes map[T]bool) map[T][]T {
+	L := g.NumberOfNodes() - len(excludedNodes)
 	maxW := MaxValue[N]()
-	prev := make(map[T][]T, g.NumberOfNodes())
+	prev := make(map[T][]T, L)
 
 	// Manually initialize the priority queue
-	q := newPriorityQueue[T, N](g.NumberOfNodes())
-	q.items = append(q.items, source)
-	q.m[source] = 0
-	q.pr[source] = 0
+	q := newPriorityQueue[T, N](L)
+	q.Append(source, N(0))
 	for n := range g.nodes {
 		if n == source {
 		} else if _, ok := excludedNodes[n]; !ok {
-			q.items = append(q.items, n)
-			q.pr[n] = maxW
-			q.m[n] = len(q.m)
+			q.Append(n, maxW)
 		}
 	}
 
 	for q.Len() > 0 {
-		u := heap.Pop(q).(T)
-		for _, v := range g.Neighbors(u) {
+		u := heap.Pop(q).(*priorityItem[T, N])
+
+		for _, v := range g.Neighbors(u.node) {
 			if _, ok := excludedNodes[v.Node]; ok {
 				continue
 			}
 
 			var alt N
-			if q.pr[u] == maxW {
+			if v.Weight < 0 {
+				panic(fmt.Sprintf("Edge (%v, %v) has a negative weight!", u, v.Node))
+			} else if u.prio == maxW {
 				// We prevent here any integer overflow
 				alt = maxW
-			} else if v.Weight < 0 {
-				panic(fmt.Sprintf("Edge (%v, %v) has a negative weight!", u, v.Node))
 			} else {
-				alt = q.pr[u] + v.Weight
+				alt = u.prio + v.Weight
 			}
 
-			if alt < q.pr[v.Node] {
-				prev[v.Node] = []T{u}
-				q.update(v.Node, alt)
+			pi := q.m[v.Node]
+			if alt < pi.prio {
+				prev[v.Node] = []T{u.node}
+				q.update(pi, alt)
 
-			} else if withMultiplePaths && alt == q.pr[v.Node] {
-				prev[v.Node] = append(prev[v.Node], u)
-				q.update(v.Node, alt)
+			} else if withMultiplePaths && alt == pi.prio {
+				prev[v.Node] = append(prev[v.Node], u.node)
+				q.update(pi, alt)
 			}
 		}
 	}
@@ -109,60 +128,59 @@ func (g *Graph[T, N]) sourceShortestPathMap(source T, withMultiplePaths bool, ex
 func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool, excludedNodes map[T]bool) (map[T][]T, N) {
 	g.validatePathNodes(source, dest)
 
+	L := g.NumberOfNodes() - len(excludedNodes)
 	maxW := MaxValue[N]()
-	prev := make(map[T][]T, g.NumberOfNodes())
+	prev := make(map[T][]T, L)
 
 	// Manually initialize the priority queue
-	q := newPriorityQueue[T, N](g.NumberOfNodes())
-	q.items = append(q.items, source)
-	q.m[source] = 0
-	q.pr[source] = 0
+	q := newPriorityQueue[T, N](L)
+	q.Append(source, N(0))
 	for n := range g.nodes {
 		if n == source {
 		} else if _, ok := excludedNodes[n]; !ok {
-			q.items = append(q.items, n)
-			q.pr[n] = maxW
-			q.m[n] = len(q.m)
+			q.Append(n, maxW)
 		}
 	}
 
 	for q.Len() > 0 {
-		u := heap.Pop(q).(T)
-		if u == dest {
+		u := heap.Pop(q).(*priorityItem[T, N])
+		if u.node == dest {
 			break
 		}
 
-		for _, v := range g.Neighbors(u) {
+		for _, v := range g.Neighbors(u.node) {
 			if _, ok := excludedNodes[v.Node]; ok {
 				continue
 			}
 
 			var alt N
-			if q.pr[u] == maxW {
+			if v.Weight < 0 {
+				panic(fmt.Sprintf("Edge (%v, %v) has a negative weight!", u, v.Node))
+			} else if u.prio == maxW {
 				// We prevent here any integer overflow
 				alt = maxW
-			} else if v.Weight < 0 {
-				panic(fmt.Sprintf("Edge (%v, %v) has a negative weight!", u, v.Node))
 			} else {
-				alt = q.pr[u] + v.Weight
+				alt = u.prio + v.Weight
 			}
 
-			if alt < q.pr[v.Node] {
-				prev[v.Node] = []T{u}
-				q.update(v.Node, alt)
+			pi := q.m[v.Node]
+			if alt < pi.prio {
+				prev[v.Node] = []T{u.node}
+				q.update(pi, alt)
 
-			} else if withMultiplePaths && alt == q.pr[v.Node] {
-				prev[v.Node] = append(prev[v.Node], u)
-				q.update(v.Node, alt)
+			} else if withMultiplePaths && alt == pi.prio {
+				prev[v.Node] = append(prev[v.Node], u.node)
+				q.update(pi, alt)
 			}
 		}
 	}
 
-	if q.pr[dest] == maxW {
+	dist := q.m[dest].prio
+	if dist == maxW {
 		// No path was found
-		return nil, 0
+		return nil, maxW
 	}
-	return prev, q.pr[dest]
+	return prev, dist
 }
 
 func pathFromShortestPathMap[T comparable, N Number](dest T, prev map[T][]T, dist N) ([]T, N) {

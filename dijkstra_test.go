@@ -133,6 +133,7 @@ func BenchmarkDijkstraShortestPath(b *testing.B) {
 	g := KarateClubGraph()
 	nodes := slices.Collect(g.Nodes())
 
+	b.ReportAllocs()
 	for b.Loop() {
 		for _, src := range nodes {
 			for _, dst := range nodes {
