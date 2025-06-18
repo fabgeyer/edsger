@@ -1,6 +1,7 @@
 package edsger
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -125,5 +126,20 @@ func TestDijkstraAllDijkstraDisjointShortestPaths(t *testing.T) {
 
 	if i != N {
 		t.Fatal("Invalid number of paths")
+	}
+}
+
+func BenchmarkDijkstraShortestPath(b *testing.B) {
+	g := KarateClubGraph()
+	nodes := slices.Collect(g.Nodes())
+
+	for b.Loop() {
+		for _, src := range nodes {
+			for _, dst := range nodes {
+				if src != dst {
+					g.DijkstraShortestPath(src, dst)
+				}
+			}
+		}
 	}
 }

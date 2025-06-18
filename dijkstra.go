@@ -55,39 +55,22 @@ func (pq *priorityQueue[T, N]) update(item T, priority N) {
 	heap.Fix(pq, pq.m[item])
 }
 
-func (pq *priorityQueue[T, N]) addWithPriority(item T, priority N) {
-	heap.Push(pq, item)
-	pq.update(item, priority)
-}
-
-func (g *Graph[T, N]) validateAllWeightsArePositive() {
-	if !Signed[N]() {
-		return
-	}
-
-	for src, dests := range g.edges {
-		for _, n := range dests {
-			if n.Weight < 0 {
-				msg := fmt.Sprintf("Edge (%v, %v) has a negative weight!", src, n.Node)
-				panic(msg)
-			}
-		}
-	}
-}
-
+// Implementation of Dijkstra's shortest path algorithm using a priority queue
 func (g *Graph[T, N]) sourceShortestPathMap(source T, withMultiplePaths bool, excludedNodes map[T]bool) map[T][]T {
-	// Implementation of Dijkstra's shortest path algorithm using a priority queue
-	g.validateAllWeightsArePositive()
-
-	prev := make(map[T][]T, g.NumberOfNodes())
-	q := newPriorityQueue[T, N](len(g.nodes))
-
 	maxW := MaxValue[N]()
+	prev := make(map[T][]T, g.NumberOfNodes())
+
+	// Manually initialize the priority queue
+	q := newPriorityQueue[T, N](g.NumberOfNodes())
+	q.items = append(q.items, source)
+	q.m[source] = 0
+	q.pr[source] = 0
 	for n := range g.nodes {
 		if n == source {
-			q.addWithPriority(n, 0)
 		} else if _, ok := excludedNodes[n]; !ok {
-			q.addWithPriority(n, maxW)
+			q.items = append(q.items, n)
+			q.pr[n] = maxW
+			q.m[n] = len(q.m)
 		}
 	}
 
@@ -102,6 +85,8 @@ func (g *Graph[T, N]) sourceShortestPathMap(source T, withMultiplePaths bool, ex
 			if q.pr[u] == maxW {
 				// We prevent here any integer overflow
 				alt = maxW
+			} else if v.Weight < 0 {
+				panic(fmt.Sprintf("Edge (%v, %v) has a negative weight!", u, v.Node))
 			} else {
 				alt = q.pr[u] + v.Weight
 			}
@@ -120,21 +105,24 @@ func (g *Graph[T, N]) sourceShortestPathMap(source T, withMultiplePaths bool, ex
 	return prev
 }
 
+// Implementation of Dijkstra's shortest path algorithm using a priority queue
 func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool, excludedNodes map[T]bool) (map[T][]T, N) {
-	// Implementation of Dijkstra's shortest path algorithm using a priority queue
-
-	g.validateAllWeightsArePositive()
 	g.validatePathNodes(source, dest)
 
-	prev := make(map[T][]T, g.NumberOfNodes())
-	q := newPriorityQueue[T, N](g.NumberOfNodes())
-
 	maxW := MaxValue[N]()
+	prev := make(map[T][]T, g.NumberOfNodes())
+
+	// Manually initialize the priority queue
+	q := newPriorityQueue[T, N](g.NumberOfNodes())
+	q.items = append(q.items, source)
+	q.m[source] = 0
+	q.pr[source] = 0
 	for n := range g.nodes {
 		if n == source {
-			q.addWithPriority(n, 0)
 		} else if _, ok := excludedNodes[n]; !ok {
-			q.addWithPriority(n, maxW)
+			q.items = append(q.items, n)
+			q.pr[n] = maxW
+			q.m[n] = len(q.m)
 		}
 	}
 
@@ -153,6 +141,8 @@ func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool, ex
 			if q.pr[u] == maxW {
 				// We prevent here any integer overflow
 				alt = maxW
+			} else if v.Weight < 0 {
+				panic(fmt.Sprintf("Edge (%v, %v) has a negative weight!", u, v.Node))
 			} else {
 				alt = q.pr[u] + v.Weight
 			}
