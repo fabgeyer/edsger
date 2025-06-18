@@ -175,12 +175,12 @@ func (g *Graph[T, N]) shortestPathMap(source, dest T, withMultiplePaths bool, ex
 		}
 	}
 
-	dist := q.m[dest].prio
-	if dist == maxW {
+	d, ok := q.m[dest]
+	if !ok || d.prio == maxW {
 		// No path was found
 		return nil, maxW
 	}
-	return prev, dist
+	return prev, d.prio
 }
 
 func pathFromShortestPathMap[T comparable, N Number](dest T, prev map[T][]T, dist N) ([]T, N) {
