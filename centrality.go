@@ -33,7 +33,7 @@ func (g *Graph[T, N]) BetweennessCentralitySubset(subset []T) map[T]int {
 				}
 
 				path, _ := pathFromShortestPathMap(dest, smap, 0)
-				if path == nil || len(path) < 3 {
+				if len(path) < 3 {
 					continue
 				}
 
